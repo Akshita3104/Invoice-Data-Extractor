@@ -75,9 +75,11 @@ This app requires access to Google's Generative AI API (Gemini). You can get a *
 
 ## 🧪 Want to Build from Source?
 
-git clone https://github.com/Cherry28831/Invoice-Data-Extractor.git
+git clone https://github.com/Akshita3104/Invoice-Data-Extractor.git
 cd Invoice-Data-Extractor
 pip install -r requirements.txt
 npm run dist  # if using Electron or similar packaging tools
 
+
+Built with 💙 by Akshita3104, Cherry28831, and itisar-345
 Open for contributions, forks, and feedback!
