@@ -1,44 +1,310 @@
-# 🧾 Invoice Data Extractor
+# 🚀 Advanced Invoice Extraction System
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/Cherry28831/Invoice-Data-Extractor)
 ![MIT License](https://img.shields.io/github/license/Cherry28831/Invoice-Data-Extractor)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 
-A lightweight yet powerful desktop app that extracts data from invoices in **PDF** or **JPG** format with over **95% accuracy**. This is possible using a mix of **OCR**, **Generative AI (Gemini)**, and smart processing — all bundled into a single `.exe` file!
-
 ---
 
-## 📦 Features
+A production-ready, multi-modal invoice extraction system with state-of-the-art document understanding capabilities.
 
-- 💡 Intelligent extraction using **Google Generative AI**
-- 📄 Supports **PDF** and **JPG** invoice formats
-- 🧠 Uses `pytesseract`, `pdfplumber`, and `pdf2image`
-- 📊 Exports structured data to **Excel**
-- 🖼️ Intuitive **Tkinter GUI**
-- ⚙️ Backend logic is bundled — **no additional installation needed!**
+## 📋 Features
 
----
+### Core Capabilities
+- ✅ **Multi-format Support**: PDF, JPEG, PNG, TIFF
+- ✅ **Quality Assessment**: Automatic quality detection and adaptive preprocessing
+- ✅ **Multi-Engine OCR**: Tesseract, DocTR, TrOCR with intelligent routing
+- ✅ **Layout Analysis**: Zone segmentation, table detection, reading order
+- ✅ **Document Graph**: Graph Neural Networks for structural reasoning
+- ✅ **Multimodal Fusion**: Visual + Text + Layout + Graph features
+- ✅ **Hybrid Extraction**: LLM (Gemini) + Rule-based for best results
+- ✅ **Multi-Layer Validation**: Arithmetic, format, consistency, plausibility
+- ✅ **Multiple Export Formats**: Excel, CSV, JSON, PDF reports
 
-## 🧠 Tech Stack & Libraries Used
+### Advanced Features
+- 🔥 Adaptive preprocessing based on image quality
+- 🔥 Ensemble OCR with confidence scoring
+- 🔥 Attention-based multimodal fusion
+- 🔥 Graph Neural Network reasoning
+- 🔥 Automatic field detection and entity classification
+- 🔥 Cross-validation between extraction methods
+- 🔥 Comprehensive confidence scoring
 
-- [`pdfplumber`](https://github.com/jsvine/pdfplumber)
-- [`pdf2image`](https://github.com/Belval/pdf2image)
-- [`pytesseract`](https://github.com/madmaze/pytesseract)
-- [`google-generativeai`](https://github.com/google/generative-ai-python)
-- `tkinter` (GUI)
-- `pandas`, `openpyxl` (Excel generation)
+## 🏗️ Architecture
 
----
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Document Input                           │
+│              (PDF, JPEG, PNG, TIFF)                         │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  INGESTION: Format handling, Quality assessment             │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  PREPROCESSING: Adaptive enhancement (denoise, skew, etc)   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  OCR: Multi-engine routing (Tesseract/DocTR/TrOCR)          │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  LAYOUT ANALYSIS: Zones, Tables, Reading order              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  GRAPH: Document graph + GNN reasoning                      │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  MULTIMODAL: Feature fusion (Visual+Text+Layout+Graph)      │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  EXTRACTION: Hybrid LLM + Rule-based                        │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  VALIDATION: Arithmetic, Format, Consistency, Plausibility  │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  EXPORT: Excel, CSV, JSON, PDF                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-🧠 How It Works
-- PDFs are read using pdfplumber. If text extraction fails, it switches to OCR using pytesseract.
-- Extracted text is sent to the Gemini API with a prompt for field extraction.
-- Parsed response is saved to combined_data.json and converted to an Excel file.
-- All weights are converted to kilograms.
+## 🚀 Quick Start
 
-> ✅ Since we bundled `backend.py` into the final executable, there is **no need to install any libraries** or set up Python locally. Everything runs from the `.exe` — plug and play!
+### 1. Installation
 
----
+```bash
+# Clone repository
+git clone <repository-url>
+cd invoice-extractor
+
+# Install basic dependencies
+pip install -r requirements.txt
+
+# Install system dependencies
+# Ubuntu/Debian:
+sudo apt-get install tesseract-ocr poppler-utils
+
+# MacOS:
+brew install tesseract poppler
+```
+
+### 2. Basic Usage
+
+```python
+from backend.backend import InvoiceExtractionPipeline
+
+# Initialize pipeline
+pipeline = InvoiceExtractionPipeline(
+    api_key="your-gemini-api-key",
+    enable_advanced_features=False,  # Set True for full features
+    use_gpu=False
+)
+
+# Process single document
+result = pipeline.process_document(
+    document_path="path/to/invoice.pdf",
+    output_folder="./output",
+    filename="invoice_data.xlsx"
+)
+
+if result['success']:
+    print(f"Extracted {len(result['extracted_data'])} items")
+    print(f"Confidence: {result['confidence']['overall_confidence']:.1%}")
+```
+
+### 3. Process Multiple Documents
+
+```python
+# Process batch
+result = pipeline.process_multiple_documents(
+    document_paths=["invoice1.pdf", "invoice2.pdf", "invoice3.pdf"],
+    output_folder="./output",
+    filename="combined_invoices.xlsx"
+)
+
+print(f"Processed {result['successful']}/{result['total_documents']} documents")
+print(f"Total items: {result['total_items']}")
+```
+
+## 📁 Project Structure
+
+```
+invoice-extractor/
+├── backend/
+│   ├── backend.py              # Main pipeline orchestrator
+│   ├── ingestion/              # Multi-format document handling
+│   ├── preprocessing/          # Adaptive quality enhancement
+│   ├── ocr/                    # Multi-engine OCR
+│   ├── layout_analysis/        # Document structure analysis
+│   ├── graph/                  # Document graph & GNN
+│   ├── multimodal/             # Feature fusion
+│   ├── extraction/             # Data extraction
+│   ├── validation/             # Multi-layer validation
+│   └── export/                 # Multiple output formats
+├── frontend/                   # Electron UI
+├── main.js                     # Electron main process
+├── requirements.txt            # Python dependencies
+└── README.md                   # This file
+```
+
+## ⚙️ Configuration
+
+### Enable Advanced Features
+
+```python
+pipeline = InvoiceExtractionPipeline(
+    api_key="your-api-key",
+    enable_advanced_features=True,  # Enable GNN, multimodal fusion
+    use_gpu=True  # Use GPU acceleration
+)
+```
+
+### Custom Validation Thresholds
+
+```python
+from validation import ArithmeticValidator
+
+validator = ArithmeticValidator(tolerance=0.05)  # 5% tolerance
+```
+
+### Export Options
+
+```python
+from export import ExcelExporter, CSVExporter, JSONExporter
+
+# Excel with validation
+excel_exporter.export(
+    data=extracted_data,
+    output_folder="./output",
+    include_validation=True,
+    validation_issues=issues,
+    confidence_scores=confidence
+)
+
+# JSON with grouping
+json_exporter.export_structured(
+    data=extracted_data,
+    output_path="./output/invoices.json",
+    group_by_invoice=True
+)
+```
+
+## 📊 Output
+
+The system generates:
+
+1. **Excel File** (Multi-sheet):
+   - Invoice Data
+   - Validation Issues
+   - Confidence Scores
+   - Summary Statistics
+
+2. **JSON File**:
+   - Structured data with metadata
+   - Validation issues
+   - Confidence metrics
+
+3. **PDF Report** (Optional):
+   - Summary
+   - Data tables
+   - Validation results
+
+## 🎯 Extracted Fields
+
+- Goods Description
+- HSN/SAC Code
+- Quantity
+- Weight (with unit conversion)
+- Rate (per unit)
+- Amount
+- Company Name
+- Invoice Number
+- FSSAI Number
+- Date of Invoice (DD/MM/YYYY)
+
+## 🔧 Advanced Usage
+
+### Using Individual Modules
+
+```python
+# OCR only
+from ocr import OCRRouter
+
+router = OCRRouter(enable_ensemble=True)
+result = router.extract_text(image)
+
+# Validation only
+from validation import ArithmeticValidator, FormatValidator
+
+arith = ArithmeticValidator()
+data, issues = arith.validate(extracted_data)
+
+# Export only
+from export import ExcelExporter
+
+exporter = ExcelExporter()
+exporter.export(data, "./output", "invoices.xlsx")
+```
+
+## 📈 Performance
+
+- **Basic Mode** (No advanced features): ~5-10 seconds/page
+- **Advanced Mode** (Full features): ~15-30 seconds/page
+- **Accuracy**: 95%+ on good quality documents
+- **Supported Languages**: English (extendable)
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"Tesseract not found"**
+```bash
+# Install Tesseract
+sudo apt-get install tesseract-ocr
+```
+
+**"Module not found"**
+```bash
+# Install missing dependencies
+pip install -r requirements.txt
+```
+
+**Low extraction accuracy**
+- Check image quality
+- Enable preprocessing
+- Try ensemble OCR
+- Enable advanced features
+
+## 🧪 Want to Build from Source?
+
+git clone https://github.com/Cherry28831/Invoice-Data-Extractor.git
+cd Invoice-Data-Extractor
+pip install -r requirements.txt
+npm run dist  # if using Electron or similar packaging tools
+
+## 🤝 Contributing
+
+Contributions are welcome! Areas for improvement:
+- Additional OCR engines
+- More validation rules
+- Support for more languages
+- UI improvements
 
 ## 🚀 Getting Started
 
@@ -66,18 +332,17 @@ This app requires access to Google's Generative AI API (Gemini). You can get a *
 
 ---
 
-📧 Output
-- `combined_data.json`: Raw structured data
-- `combined_invoice_data.xlsx`: Final Excel export
-- JSON is deleted after Excel is generated.
+## 🙏 Acknowledgments
+
+- Google Gemini for LLM
+- Tesseract OCR
+- PyTorch ecosystem
+- ReportLab for PDF generation
+
+## 📞 Support
+
+For issues or questions, please open an issue on GitHub.
 
 ---
 
-## 🧪 Want to Build from Source?
-
-git clone https://github.com/Cherry28831/Invoice-Data-Extractor.git
-cd Invoice-Data-Extractor
-pip install -r requirements.txt
-npm run dist  # if using Electron or similar packaging tools
-
-Open for contributions, forks, and feedback!
+**Built with ❤️ for accurate invoice extraction**

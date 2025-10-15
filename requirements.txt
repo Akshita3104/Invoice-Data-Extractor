@@ -1,9 +1,131 @@
-pdfplumber
-pdf2image
-pytesseract
-google-generativeai
-pandas
-openpyxl
-tkinter
-Pillow
-pyttsx3
+# ============================================================================
+# Invoice Extraction System - Dependencies
+# Complete list of all required packages
+# ============================================================================
+
+# ======================== Core Dependencies ========================
+# Image processing
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pdf2image>=1.16.3
+pdfplumber>=0.9.0
+
+# OCR
+pytesseract>=0.3.10
+
+# Google Gemini LLM
+google-generativeai>=0.3.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+
+# ======================== Preprocessing ========================
+scikit-image>=0.21.0
+scipy>=1.11.0
+imutils>=0.5.4
+
+# ======================== OCR Engines (Optional) ========================
+# DocTR - Deep Learning OCR
+# python-doctr[torch]>=0.7.0  # Uncomment if using DocTR
+
+# Transformers for TrOCR
+# transformers>=4.30.0  # Uncomment if using TrOCR
+# torch>=2.0.0  # Uncomment if using TrOCR
+# torchvision>=0.15.0  # Uncomment if using TrOCR
+
+# ======================== Deep Learning (Optional) ========================
+# PyTorch - for advanced features (GNN, multimodal fusion)
+# torch>=2.0.0  # Uncomment if using advanced features
+# torchvision>=0.15.0  # Uncomment if using advanced features
+
+# TensorFlow (alternative to PyTorch)
+# tensorflow>=2.13.0  # Uncomment if using TensorFlow
+
+# ======================== Graph Processing ========================
+networkx>=3.1
+
+# PyTorch Geometric - for GNN (Optional)
+# torch-geometric>=2.3.0  # Uncomment if using GNN reasoning
+
+# ======================== NLP & Text Processing ========================
+# Sentence transformers for text embeddings (Optional)
+# sentence-transformers>=2.2.0  # Uncomment if using text encoder
+
+# SpaCy for NLP (Optional)
+# spacy>=3.6.0  # Uncomment if using entity classification
+
+# ======================== Layout Analysis (Optional) ========================
+# Detectron2 for table detection (Advanced, Optional)
+# detectron2>=0.6  # Uncomment if using advanced table detection
+
+# ======================== Export & Reporting ========================
+# PDF generation
+reportlab>=4.0.0
+
+# ======================== Utilities ========================
+# Configuration
+pyyaml>=6.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Logging
+loguru>=0.7.0
+
+# Date parsing
+python-dateutil>=2.8.2
+
+# ======================== Development (Optional) ========================
+# matplotlib>=3.7.0  # For visualization
+# seaborn>=0.12.0  # For advanced visualization
+# jupyter>=1.0.0  # For notebooks
+
+# ============================================================================
+# Installation Instructions:
+# ============================================================================
+#
+# Basic installation (minimum requirements):
+#   pip install -r requirements.txt
+#
+# With DocTR (Deep Learning OCR):
+#   pip install python-doctr[torch]
+#
+# With TrOCR (Transformer OCR):
+#   pip install transformers torch torchvision
+#
+# With Advanced Features (GNN, Multimodal Fusion):
+#   pip install torch torchvision torch-geometric sentence-transformers
+#
+# Full installation (all features):
+#   pip install -r requirements.txt
+#   pip install python-doctr[torch] transformers torch torchvision
+#   pip install torch-geometric sentence-transformers spacy
+#   pip install matplotlib seaborn jupyter
+#
+# ============================================================================
+# System Dependencies:
+# ============================================================================
+#
+# Tesseract OCR (Required):
+#   Ubuntu/Debian: sudo apt-get install tesseract-ocr
+#   MacOS: brew install tesseract
+#   Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki
+#
+# Poppler (Required for pdf2image):
+#   Ubuntu/Debian: sudo apt-get install poppler-utils
+#   MacOS: brew install poppler
+#   Windows: Download from https://github.com/oschwartz10612/poppler-windows
+#
+# ============================================================================
+# GPU Support (Optional):
+# ============================================================================
+#
+# For NVIDIA GPU acceleration:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+#
+# Verify GPU availability:
+#   python -c "import torch; print(torch.cuda.is_available())"
+#
+# ============================================================================

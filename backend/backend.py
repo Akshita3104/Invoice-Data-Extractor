@@ -1,221 +1,422 @@
+"""
+Complete Invoice Extraction Pipeline
+Integrates all modules into a unified extraction system
+"""
+
 import os
-import pdfplumber
-from pdf2image import convert_from_path
-import pytesseract
-import google.generativeai as genai
-import pandas as pd
-import json
 import sys
+import json
+from typing import Dict, List, Optional
+
+# Import all modules
+from ingestion import FormatHandler, QualityAssessor
+from preprocessing import QualityEnhancer
+from ocr import OCRRouter
+from layout_analysis import ZoneSegmenter, TableDetector, ReadingOrderDetector
+from graph import GraphBuilder, GNNReasoner
+from multimodal import MultimodalFeatureExtractor, FusionLayer
+from extraction import HybridExtractor
+from validation import (
+    ArithmeticValidator,
+    FormatValidator,
+    ConsistencyValidator,
+    PlausibilityValidator,
+    ValidationConfidenceScorer
+)
+from export import ExcelExporter, CSVExporter, JSONExporter
 
 
-# ===================== PDF Text Extraction Functions =====================
-def extract_text_from_image(pdf_path):
-    text = ""
-    try:
-        images = convert_from_path(pdf_path)
-        for image in images:
-            text += pytesseract.image_to_string(image) + "\n"
-    except Exception as e:
-        print(f"Error extracting text from image: {e}")
-    return text
-
-
-def extract_full_text(pdf_path):
-    text = ""
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-    except Exception as e:
-        print(f"Error extracting text with pdfplumber: {e}")
-    return text
-
-
-def extract_text_from_pdf(pdf_path):
-    text = extract_full_text(pdf_path)
-    if not text.strip():
-        print("No text found with pdfplumber. Switching to OCR...")
-        text = extract_text_from_image(pdf_path)
-    return text
-
-
-# ===================== Gemini API Processing Function =====================
-def process_with_gemini(text, api_key):
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
-    prompt = f"""
-    You are an expert in extracting structured data from invoices, even when the text is messy or unstructured. Extract the following details from the text below:
-
-    1. **Goods Description**: The name or description of the product. Extract the exact wording used in the text.
-    2. **HSN/SAC Code**: The HSN or SAC code for the product. Extract the numerical code as mentioned.
-    3. **Quantity**: The quantity of the product. Extract only the numerical value. If the quantity is unclear or contains inconsistencies (e.g., spaces or mixed formats), extract the first numerical value as the quantity and ignore the rest.
-    4. **Weight**: The weight of the product, including the unit (e.g., kg, qtl, tons, MT, gms, quintal, litre). Retain the unit as mentioned. If no weight is mentioned, set it to "N/A". Accept various formats like "50 KG", "0.5MT", "10 quintal", etc.
-    5. **Rate**: The rate per single unit (e.g., per kg, per bag, per pack, per MT, per qtl). Ensure it is a monetary value (₹, Rs., INR, $, USD, etc.) followed by the unit. Normalize various rate formats, even if they are written as "Rate: 2200/MT", "Rs. 50 per kg", "₹70/qtl" etc. Extract the full string showing both the amount and the unit (e.g., "₹2200/MT", "Rs.50 per kg").
-    6. **Amount**: The total amount for the product. This is the total cost for all units of the item. Ensure it is a monetary value. Do not extract the final total of the entire invoice.
-    7. **Company Name**: The name of the company issuing the invoice. Extract the exact name as mentioned.
-    8. **Invoice Number**: The invoice number. Extract the exact alphanumeric code.
-    9. **FSSAI Number**: The FSSAI number (if applicable). Extract the exact number. If two FSSAI numbers are present, take only the buyer's FSSAI number.
-    10. **Date of Invoice**: Extract the date in **DD/MM/YYYY format**, even if it is mentioned in another format such as "DD-MM-YYYY", "YYYY/MM/DD", or "MM/DD/YYYY". Standardize the output to DD/MM/YYYY and retain the correct date.
-
-    **Rules**:
-    - If a field is missing or unclear, set it to "N/A". Do not infer or guess values.
-    - Retain the exact wording, units, and formatting as mentioned in the text unless otherwise specified.
-    - If multiple products are listed, extract the details for each product separately.
-    - If the text contains irrelevant information or noise, ignore it and focus only on the relevant details.
-    - Ensure that the extracted data is accurate and matches the text exactly.
-
-    **Text**:
-    {text}
-    Return the result as a list of JSON objects, one for each product in the invoice.
+class InvoiceExtractionPipeline:
     """
-    try:
-        response = model.generate_content(prompt)
-        print(f"API Response: {response.text}")  # Debug log
-        return response.text
-    except Exception as e:
-        print(f"Error processing with API: {e}")  # Debug log
-        return f"Error processing with API: {e}"
-
-
-# ===================== Convert Weight Function =====================
-def convert_weight_to_kg(weight_str):
+    Complete invoice extraction pipeline integrating all modules
     """
-    Convert weight from qtl or tons to kg.
-    - If the unit is 'qtl' (or any variation like 'Qtl', 'QTL'), multiply the weight by 100 to convert to kg.
-    - If the unit is 'ton' (or any variation like 'TON', 'tons'), multiply the weight by 1000 to convert to kg.
-    - If the unit is 'kg' (or any variation like 'KG', 'Kg'), no conversion is needed.
-    """
-    weight_str = weight_str.replace(",", "")  # Remove commas from the number
-    weight_parts = weight_str.split()  # Split into value and unit
-
-    try:
-        weight_value = float(weight_parts[0])  # Convert the numerical part to float
-    except ValueError:
-        return None  # Handle unexpected formats safely
-
-    weight_unit = (
-        weight_parts[1].lower() if len(weight_parts) > 1 else "kg"
-    )  # Default to kg if no unit found
-
-    if weight_unit == "qtl":
-        return weight_value * 100  # Convert qtl to kg
-    elif weight_unit in ["ton", "tons"]:
-        return weight_value * 1000  # Convert tons to kg
-    elif weight_unit == "kg":
-        return weight_value  # No conversion needed
-    else:
-        return weight_value  # If unit is unknown, return the value as is
-
-
-# ===================== Process Multiple PDFs Function =====================
-def process_multiple_pdfs(pdf_paths, api_key, output_folder, filename):
-    # Ensure the output folder exists
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-        print(f"Created output folder: {output_folder}")  # Debug log
-
-    combined_data = []
-
-    for pdf_path in pdf_paths:
-        print(f"Processing PDF: {pdf_path}")  # Debug log
-
-        text = extract_text_from_pdf(pdf_path)
-        if not text.strip():
-            print(f"No text extracted from {pdf_path}")
-            continue
-
-        result = process_with_gemini(text, api_key)
-        if not result or "Error" in result:
-            print(f"Error processing {pdf_path} with LLM")
-            continue
-
+    
+    def __init__(
+        self,
+        api_key: str,
+        enable_advanced_features: bool = True,
+        use_gpu: bool = True
+    ):
+        """
+        Initialize complete pipeline
+        
+        Args:
+            api_key: LLM API key (Gemini)
+            enable_advanced_features: Enable graph, multimodal fusion
+            use_gpu: Use GPU for deep learning models
+        """
+        self.api_key = api_key
+        self.enable_advanced = enable_advanced_features
+        self.use_gpu = use_gpu
+        
+        print("Initializing Invoice Extraction Pipeline...")
+        
+        # Initialize all components
+        self._initialize_components()
+        
+        print("Pipeline initialized successfully!")
+    
+    def _initialize_components(self):
+        """Initialize all pipeline components"""
+        # Ingestion
+        self.format_handler = FormatHandler(target_dpi=300)
+        self.quality_assessor = QualityAssessor()
+        
+        # Preprocessing
+        self.quality_enhancer = QualityEnhancer(aggressive=False)
+        
+        # OCR
+        self.ocr_router = OCRRouter(enable_ensemble=False)
+        
+        # Layout Analysis
+        self.zone_segmenter = ZoneSegmenter(method='hybrid')
+        self.table_detector = TableDetector(method='hybrid')
+        self.reading_order = ReadingOrderDetector()
+        
+        # Graph (if enabled)
+        if self.enable_advanced:
+            self.graph_builder = GraphBuilder(
+                include_words=True,
+                include_lines=True,
+                include_blocks=True
+            )
+            self.gnn_reasoner = GNNReasoner(use_gpu=self.use_gpu)
+        
+        # Multimodal (if enabled)
+        if self.enable_advanced:
+            self.feature_extractor = MultimodalFeatureExtractor(
+                use_visual=True,
+                use_text=True,
+                use_layout=True,
+                use_graph=True,
+                use_gpu=self.use_gpu
+            )
+            self.fusion_layer = FusionLayer(fusion_method='attention')
+        
+        # Extraction
+        self.extractor = HybridExtractor(api_key=self.api_key, prefer_llm=True)
+        
+        # Validation
+        self.arithmetic_validator = ArithmeticValidator(tolerance=0.02)
+        self.format_validator = FormatValidator()
+        self.consistency_validator = ConsistencyValidator()
+        self.plausibility_validator = PlausibilityValidator()
+        self.confidence_scorer = ValidationConfidenceScorer()
+        
+        # Export
+        self.excel_exporter = ExcelExporter()
+        self.csv_exporter = CSVExporter()
+        self.json_exporter = JSONExporter()
+    
+    def process_document(
+        self,
+        document_path: str,
+        output_folder: str,
+        filename: str = "invoice_data.xlsx"
+    ) -> Dict:
+        """
+        Process a single document through complete pipeline
+        
+        Args:
+            document_path: Path to document (PDF, JPEG, PNG, TIFF)
+            output_folder: Output folder for results
+            filename: Output filename
+            
+        Returns:
+            Processing results dictionary
+        """
+        print(f"\n{'='*60}")
+        print(f"Processing: {os.path.basename(document_path)}")
+        print(f"{'='*60}\n")
+        
+        results = {
+            'input_file': document_path,
+            'success': False,
+            'steps': {},
+            'extracted_data': None,
+            'validation_issues': {},
+            'confidence': None,
+            'output_files': []
+        }
+        
         try:
-            # Clean the response (remove markdown formatting)
-            cleaned_result = result.strip().strip("```json").strip("```")
-            extracted_data = json.loads(cleaned_result)
-            combined_data.extend(extracted_data)  # Add data to the combined list
+            # Step 1: Ingestion
+            print("Step 1: Document Ingestion...")
+            image, quality_metrics = self.format_handler.process(document_path)
+            results['steps']['ingestion'] = {
+                'quality_score': quality_metrics['overall_score'],
+                'quality_level': quality_metrics['quality_level']
+            }
+            print(f"  Quality: {quality_metrics['quality_level']} ({quality_metrics['overall_score']:.2f})")
+            
+            # Step 2: Preprocessing (if needed)
+            if quality_metrics['overall_score'] < 0.7:
+                print("\nStep 2: Adaptive Preprocessing...")
+                image = self.quality_enhancer.enhance(image, quality_metrics)
+                results['steps']['preprocessing'] = 'applied'
+            else:
+                print("\nStep 2: Preprocessing skipped (good quality)")
+                results['steps']['preprocessing'] = 'skipped'
+            
+            # Step 3: OCR
+            print("\nStep 3: OCR Extraction...")
+            ocr_result = self.ocr_router.extract_text(image, quality_metrics)
+            results['steps']['ocr'] = {
+                'engine': ocr_result['engine'],
+                'confidence': ocr_result['confidence']
+            }
+            print(f"  Engine: {ocr_result['engine']}, Confidence: {ocr_result['confidence']:.2f}")
+            
+            # Step 4: Layout Analysis
+            print("\nStep 4: Layout Analysis...")
+            zones = self.zone_segmenter.segment(image, ocr_result)
+            tables = self.table_detector.detect(image, zones, ocr_result)
+            reading_order_blocks = self.reading_order.detect_order(ocr_result, zones)
+            
+            results['steps']['layout'] = {
+                'zones': len(zones),
+                'tables': len(tables)
+            }
+            print(f"  Zones: {len(zones)}, Tables: {len(tables)}")
+            
+            # Step 5: Graph Construction (if enabled)
+            if self.enable_advanced:
+                print("\nStep 5: Document Graph Construction...")
+                doc_graph = self.graph_builder.build(ocr_result, zones, tables)
+                results['steps']['graph'] = {
+                    'nodes': len(doc_graph.nodes()),
+                    'edges': len(doc_graph.edges())
+                }
+                print(f"  Nodes: {len(doc_graph.nodes())}, Edges: {len(doc_graph.edges())}")
+            else:
+                doc_graph = None
+            
+            # Step 6: Multimodal Feature Extraction (if enabled)
+            if self.enable_advanced:
+                print("\nStep 6: Multimodal Feature Extraction...")
+                features = self.feature_extractor.extract_features(
+                    image=image,
+                    ocr_result=ocr_result,
+                    zones=zones,
+                    graph=doc_graph
+                )
+                fused_features = self.fusion_layer.fuse(features)
+                results['steps']['multimodal'] = 'completed'
+            
+            # Step 7: Extraction
+            print("\nStep 7: Data Extraction...")
+            extracted_data = self.extractor.extract(
+                text=ocr_result['text'],
+                ocr_result=ocr_result,
+                zones=zones,
+                tables=tables,
+                graph_features=results['steps'].get('graph')
+            )
+            results['extracted_data'] = extracted_data
+            results['steps']['extraction'] = {
+                'items_extracted': len(extracted_data)
+            }
+            print(f"  Extracted: {len(extracted_data)} items")
+            
+            # Step 8: Validation
+            print("\nStep 8: Multi-Layer Validation...")
+            data, arith_issues = self.arithmetic_validator.validate(extracted_data)
+            data, format_issues = self.format_validator.validate(data)
+            data, consist_issues = self.consistency_validator.validate(data)
+            data, plaus_issues = self.plausibility_validator.validate(data)
+            
+            results['validation_issues'] = {
+                'arithmetic': arith_issues,
+                'format': format_issues,
+                'consistency': consist_issues,
+                'plausibility': plaus_issues
+            }
+            
+            total_issues = sum(len(issues) for issues in results['validation_issues'].values())
+            print(f"  Total issues found: {total_issues}")
+            
+            # Step 9: Confidence Scoring
+            print("\nStep 9: Confidence Scoring...")
+            confidence_result = self.confidence_scorer.calculate_confidence(
+                data,
+                arith_issues,
+                format_issues,
+                consist_issues,
+                plaus_issues
+            )
+            results['confidence'] = confidence_result
+            print(f"  Overall Confidence: {confidence_result['overall_confidence']:.1%}")
+            print(f"  Quality Level: {confidence_result['quality_level'].upper()}")
+            
+            # Step 10: Export
+            print("\nStep 10: Exporting Results...")
+            
+            # Excel export
+            excel_path = self.excel_exporter.export(
+                data=data,
+                output_folder=output_folder,
+                filename=filename,
+                include_validation=True,
+                validation_issues=results['validation_issues'],
+                confidence_scores=confidence_result
+            )
+            results['output_files'].append(excel_path)
+            print(f"  Excel: {excel_path}")
+            
+            # JSON export (optional)
+            json_filename = filename.replace('.xlsx', '.json')
+            json_path = self.json_exporter.export(
+                data=data,
+                output_folder=output_folder,
+                filename=json_filename,
+                include_metadata=True,
+                validation_issues=results['validation_issues'],
+                confidence_scores=confidence_result
+            )
+            results['output_files'].append(json_path)
+            print(f"  JSON: {json_path}")
+            
+            results['success'] = True
+            
+            print(f"\n{'='*60}")
+            print("Processing Complete!")
+            print(f"{'='*60}\n")
+            
         except Exception as e:
-            print(f"Error parsing LLM response for {pdf_path}: {e}")
-            continue
-
-    # Save combined data to a single JSON file
-    output_file = os.path.join(output_folder, "combined_data.json")
-    print(f"Saving combined JSON file to: {output_file}")  # Debug log
-
-    try:
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(combined_data, f, indent=4)
-        print(f"Combined JSON file saved successfully.")  # Debug log
-    except Exception as e:
-        print(f"Error saving combined JSON file: {e}")
-        return "Error saving combined JSON file"
-
-    # Convert combined JSON to Excel
-    excel_path = convert_json_to_excel(output_folder, filename)
-    return excel_path if excel_path else "Error saving Excel file"
-
-
-# ===================== Convert JSON to Excel =====================
-def convert_json_to_excel(output_folder, filename="combined_invoice_data.xlsx"):
-    json_file = os.path.join(output_folder, "combined_data.json")
-    print(f"Loading JSON file: {json_file}")  # Debug log
-
-    try:
-        with open(json_file, "r", encoding="utf-8") as file:
-            file_content = file.read().strip().strip("```json").strip("```")
-            print(f"File content: {file_content}")  # Debug log
-
-            json_data = json.loads(file_content)
-    except Exception as e:
-        print(f"Error processing JSON file: {e}")
-        return None
-
-    if json_data:
-        print(f"Combined data: {json_data}")  # Debug log
-        df = pd.DataFrame(json_data)
-
-        # Convert weights in the 'Weight' column
-        if "Weight" in df.columns:
-            df["Weight"] = df["Weight"].apply(convert_weight_to_kg)
-
-        # Save the data as Excel
-        excel_path = os.path.join(output_folder, filename)
-        try:
-            df.to_excel(excel_path, index=False, engine="openpyxl")
-            print(f"Excel file saved at {excel_path}")
-        except Exception as e:
-            print(f"Error saving Excel file: {e}")
-            return None
-
-        # Delete JSON files after successful Excel creation
-        try:
-            for file in os.listdir(output_folder):
-                if file.endswith(".json"):
-                    os.remove(os.path.join(output_folder, file))
-                    print(f"Deleted JSON file: {file}")
-        except Exception as e:
-            print(f"Error deleting JSON files: {e}")
-
-        return excel_path
-    else:
-        print("No data to save.")
-        return None
+            print(f"\n❌ Error during processing: {e}")
+            import traceback
+            traceback.print_exc()
+            results['error'] = str(e)
+        
+        return results
+    
+    def process_multiple_documents(
+        self,
+        document_paths: List[str],
+        output_folder: str,
+        filename: str = "combined_invoice_data.xlsx"
+    ) -> Dict:
+        """
+        Process multiple documents
+        
+        Args:
+            document_paths: List of document paths
+            output_folder: Output folder
+            filename: Output filename
+            
+        Returns:
+            Combined processing results
+        """
+        print(f"\n{'='*60}")
+        print(f"Processing {len(document_paths)} documents")
+        print(f"{'='*60}\n")
+        
+        all_data = []
+        all_results = []
+        combined_issues = {
+            'arithmetic': [],
+            'format': [],
+            'consistency': [],
+            'plausibility': []
+        }
+        
+        for i, doc_path in enumerate(document_paths, 1):
+            print(f"\n[{i}/{len(document_paths)}] Processing: {os.path.basename(doc_path)}")
+            
+            result = self.process_document(
+                doc_path,
+                output_folder,
+                f"temp_{i}_{filename}"
+            )
+            
+            if result['success'] and result['extracted_data']:
+                all_data.extend(result['extracted_data'])
+                all_results.append(result)
+                
+                # Combine issues
+                for issue_type in combined_issues:
+                    combined_issues[issue_type].extend(
+                        result['validation_issues'].get(issue_type, [])
+                    )
+        
+        # Export combined data
+        if all_data:
+            print(f"\n{'='*60}")
+            print("Exporting Combined Results...")
+            print(f"{'='*60}\n")
+            
+            # Calculate combined confidence
+            confidence_result = self.confidence_scorer.calculate_confidence(
+                all_data,
+                combined_issues['arithmetic'],
+                combined_issues['format'],
+                combined_issues['consistency'],
+                combined_issues['plausibility']
+            )
+            
+            # Export
+            excel_path = self.excel_exporter.export(
+                data=all_data,
+                output_folder=output_folder,
+                filename=filename,
+                include_validation=True,
+                validation_issues=combined_issues,
+                confidence_scores=confidence_result
+            )
+            
+            print(f"Combined Excel: {excel_path}")
+            print(f"Total items extracted: {len(all_data)}")
+            print(f"Overall confidence: {confidence_result['overall_confidence']:.1%}")
+        
+        return {
+            'total_documents': len(document_paths),
+            'successful': len(all_results),
+            'total_items': len(all_data),
+            'combined_output': excel_path if all_data else None,
+            'individual_results': all_results
+        }
 
 
 # ===================== Main Execution (For Electron) =====================
-if len(sys.argv) < 5:
-    print(
-        "Usage: backend.py <pdf_path1> <pdf_path2> ... <api_key> <output_folder> <filename>"
-    )
-    sys.exit(1)
-
-pdf_paths = sys.argv[1:-3]  # All PDF paths
-api_key = sys.argv[-3]
-output_folder = sys.argv[-2]
-filename = sys.argv[-1]
-
-output_path = process_multiple_pdfs(pdf_paths, api_key, output_folder, filename)
-print(f"Processed PDFs: {output_path}")
+if __name__ == "__main__":
+    if len(sys.argv) < 5:
+        print("Usage: backend.py <pdf_path1> <pdf_path2> ... <api_key> <output_folder> <filename>")
+        sys.exit(1)
+    
+    # Parse arguments
+    pdf_paths = sys.argv[1:-3]  # All PDF paths
+    api_key = sys.argv[-3]
+    output_folder = sys.argv[-2]
+    filename = sys.argv[-1]
+    
+    try:
+        # Initialize pipeline
+        pipeline = InvoiceExtractionPipeline(
+            api_key=api_key,
+            enable_advanced_features=False,  # Set to True for full features
+            use_gpu=False  # Set to True if GPU available
+        )
+        
+        # Process documents
+        if len(pdf_paths) == 1:
+            # Single document
+            result = pipeline.process_document(pdf_paths[0], output_folder, filename)
+            
+            if result['success']:
+                print(f"\n✅ Success! Output: {result['output_files'][0]}")
+            else:
+                print(f"\n❌ Processing failed: {result.get('error', 'Unknown error')}")
+        else:
+            # Multiple documents
+            result = pipeline.process_multiple_documents(pdf_paths, output_folder, filename)
+            
+            if result['combined_output']:
+                print(f"\n✅ Success! Combined output: {result['combined_output']}")
+            else:
+                print(f"\n❌ Processing failed")
+    
+    except Exception as e:
+        print(f"\n❌ Fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

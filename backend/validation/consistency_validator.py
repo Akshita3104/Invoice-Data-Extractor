@@ -344,7 +344,7 @@ class ConsistencyValidator:
         currencies = {
             '₹': 'INR',
             'Rs': 'INR',
-            ': 'USD',
+            '$': 'USD',
             '€': 'EUR',
             '£': 'GBP',
             '¥': 'JPY'
