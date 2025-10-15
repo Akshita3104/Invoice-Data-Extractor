@@ -1,0 +1,73 @@
+# OCR Router Configuration
+# ML-based OCR engine selector
+
+model:
+  name: "ocr_router"
+  type: "random_forest"  # or "gradient_boosting", "neural_network"
+  n_estimators: 100
+  max_depth: 10
+  random_state: 42
+
+features:
+  # Image quality features
+  - "brightness_mean"
+  - "brightness_std"
+  - "contrast"
+  - "sharpness"
+  - "noise_level"
+  - "resolution_dpi"
+  - "aspect_ratio"
+  
+  # Document characteristics
+  - "has_tables"
+  - "has_handwriting"
+  - "text_density"
+  - "image_size_kb"
+  - "color_depth"
+  - "compression_ratio"
+  
+  # Text properties
+  - "estimated_font_size"
+  - "text_orientation"
+  - "language_detected"
+  - "special_characters_ratio"
+
+engines:
+  tesseract:
+    weight: 1.0
+    best_for: ["printed_text", "high_quality", "english"]
+    
+  doctr:
+    weight: 0.9
+    best_for: ["tables", "complex_layout", "multi_language"]
+    
+  trocr:
+    weight: 0.85
+    best_for: ["handwriting", "low_quality", "cursive"]
+    
+  google_vision:
+    weight: 0.95
+    best_for: ["mixed_content", "high_accuracy", "cloud_processing"]
+    requires_api: true
+    
+  aws_textract:
+    weight: 0.95
+    best_for: ["forms", "tables", "invoices"]
+    requires_api: true
+
+routing:
+  strategy: "confidence_based"  # or "quality_based", "hybrid"
+  fallback_enabled: true
+  min_confidence: 0.6
+  timeout_seconds: 30
+
+quality_thresholds:
+  high_quality: 0.8  # Use any OCR
+  medium_quality: 0.5  # Prefer robust OCR
+  low_quality: 0.3  # Use specialized OCR only
+
+ensemble:
+  enabled: false
+  min_engines: 2
+  max_engines: 3
+  voting_strategy: "weighted"  # or "majority", "unanimous"

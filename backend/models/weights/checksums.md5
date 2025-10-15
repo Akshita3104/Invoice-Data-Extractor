@@ -1,0 +1,31 @@
+# MD5 Checksums for Model Weights
+# Use: md5sum -c checksums.md5
+# 
+# Format: <md5sum>  <filename>
+#
+# Note: Update these checksums when you download/update models
+# Generate checksums: md5sum *.pth *.pt *.bin *.pkl > checksums.md5
+
+# TableNet weights
+# <CHECKSUM_HERE>  tablenet.pth
+
+# YOLOv5 weights
+# <CHECKSUM_HERE>  yolov5.pt
+
+# BERT-NER weights
+# <CHECKSUM_HERE>  bert-ner.bin
+
+# OCR Router weights
+# <CHECKSUM_HERE>  ocr_router.pkl
+
+# DocTR weights
+# <CHECKSUM_HERE>  doctr_db_resnet50.pt
+# <CHECKSUM_HERE>  doctr_crnn_vgg16.pt
+
+# LayoutLM weights
+# <CHECKSUM_HERE>  layoutlm_base.bin
+
+# Instructions:
+# 1. Download models using model_downloader.py
+# 2. Generate checksums: md5sum *.* > checksums.md5
+# 3. Verify later: md5sum -c checksums.md5

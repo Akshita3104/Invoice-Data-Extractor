@@ -1,0 +1,26 @@
+# Ignore all model weight files (they're too large for git)
+*.pth
+*.pt
+*.bin
+*.pkl
+*.onnx
+*.h5
+*.pb
+*.tflite
+*.ckpt
+
+# Ignore temporary download files
+*.tmp
+*.download
+*.part
+
+# Keep the README and .gitkeep
+!README.md
+!.gitkeep
+!.gitignore
+
+# If using Git LFS, ignore the actual files but track with LFS
+# Uncomment these if you set up Git LFS:
+# !*.pth
+# !*.pt
+# !*.bin

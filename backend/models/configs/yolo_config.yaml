@@ -1,0 +1,68 @@
+# YOLOv5 Configuration
+# Model for invoice field detection
+
+model:
+  name: "yolov5"
+  architecture: "yolov5s"  # yolov5n, yolov5s, yolov5m, yolov5l, yolov5x
+  version: "6.0"
+  
+input:
+  image_size: 640  # input image size
+  auto_resize: true
+  
+classes:
+  # Invoice field classes
+  names:
+    0: "company_name"
+    1: "invoice_number"
+    2: "invoice_date"
+    3: "customer_name"
+    4: "items_table"
+    5: "subtotal"
+    6: "tax"
+    7: "total_amount"
+    8: "payment_terms"
+    9: "bill_to"
+    10: "ship_to"
+    11: "logo"
+  num_classes: 12
+
+detection:
+  confidence_threshold: 0.25
+  iou_threshold: 0.45
+  max_detections: 100
+  agnostic_nms: false
+  multi_label: false
+
+training:
+  batch_size: 16
+  epochs: 300
+  image_size: 640
+  optimizer: "SGD"
+  lr0: 0.01  # initial learning rate
+  lrf: 0.1  # final learning rate
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+augmentation:
+  hsv_h: 0.015  # HSV-Hue augmentation
+  hsv_s: 0.7    # HSV-Saturation augmentation
+  hsv_v: 0.4    # HSV-Value augmentation
+  degrees: 0.0  # rotation (+/- deg)
+  translate: 0.1 # translation (+/- fraction)
+  scale: 0.5    # scale (+/- gain)
+  shear: 0.0    # shear (+/- deg)
+  perspective: 0.0 # perspective (+/- fraction)
+  flipud: 0.0   # flip up-down probability
+  fliplr: 0.5   # flip left-right probability
+  mosaic: 1.0   # mosaic augmentation probability
+  mixup: 0.0    # mixup augmentation probability
+
+performance:
+  device: "auto"  # auto, cpu, 0, 1, etc.
+  workers: 8
+  amp: true  # automatic mixed precision
+  half: false  # FP16 inference

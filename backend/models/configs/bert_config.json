@@ -1,0 +1,65 @@
+{
+  "model": {
+    "name": "bert_ner",
+    "architecture": "BertForTokenClassification",
+    "base_model": "dslim/bert-base-NER",
+    "vocab_size": 30522,
+    "hidden_size": 768,
+    "num_hidden_layers": 12,
+    "num_attention_heads": 12,
+    "intermediate_size": 3072,
+    "hidden_act": "gelu",
+    "hidden_dropout_prob": 0.1,
+    "attention_probs_dropout_prob": 0.1,
+    "max_position_embeddings": 512,
+    "type_vocab_size": 2,
+    "initializer_range": 0.02,
+    "layer_norm_eps": 1e-12
+  },
+  "labels": {
+    "id2label": {
+      "0": "O",
+      "1": "B-MISC",
+      "2": "I-MISC",
+      "3": "B-PER",
+      "4": "I-PER",
+      "5": "B-ORG",
+      "6": "I-ORG",
+      "7": "B-LOC",
+      "8": "I-LOC"
+    },
+    "label2id": {
+      "O": 0,
+      "B-MISC": 1,
+      "I-MISC": 2,
+      "B-PER": 3,
+      "I-PER": 4,
+      "B-ORG": 5,
+      "I-ORG": 6,
+      "B-LOC": 7,
+      "I-LOC": 8
+    },
+    "num_labels": 9
+  },
+  "tokenizer": {
+    "do_lower_case": true,
+    "max_length": 512,
+    "padding": "max_length",
+    "truncation": true,
+    "return_tensors": "pt"
+  },
+  "inference": {
+    "batch_size": 32,
+    "confidence_threshold": 0.7,
+    "aggregation_strategy": "simple"
+  },
+  "training": {
+    "batch_size": 16,
+    "learning_rate": 5e-5,
+    "epochs": 3,
+    "weight_decay": 0.01,
+    "warmup_steps": 500,
+    "logging_steps": 100,
+    "save_steps": 1000
+  }
+}
