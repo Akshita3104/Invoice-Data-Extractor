@@ -1,0 +1,338 @@
+# OCR Engines Configuration
+# Settings for different OCR engines
+
+engines:
+  # Tesseract OCR
+  tesseract:
+    name: "Tesseract OCR"
+    type: "open_source"
+    enabled: true
+    priority: 1
+    
+    # Installation path (auto-detected if empty)
+    binary_path: ""
+    
+    # Languages
+    languages:
+      - "eng"  # English
+      - "hin"  # Hindi (optional)
+    
+    # OCR Engine Mode
+    # 0 = Original Tesseract only
+    # 1 = Neural nets LSTM only
+    # 2 = Tesseract + LSTM
+    # 3 = Default, based on what is available
+    oem: 3
+    
+    # Page Segmentation Mode
+    # 0 = Orientation and script detection only
+    # 1 = Automatic page segmentation with OSD
+    # 3 = Fully automatic page segmentation, no OSD
+    # 4 = Single column of text of variable sizes
+    # 6 = Uniform block of text
+    # 7 = Single text line
+    # 11 = Sparse text
+    # 13 = Raw line (for images with single line of text)
+    psm: 6
+    
+    # DPI
+    dpi: 300
+    
+    # Timeout (seconds)
+    timeout: 30
+    
+    # Best for
+    best_for:
+      - "printed_text"
+      - "high_quality_scans"
+      - "english_text"
+      - "structured_documents"
+    
+    # Configuration string
+    config: "--oem 3 --psm 6"
+    
+    # Performance
+    speed: "fast"
+    accuracy: "good"
+    memory_usage: "low"
+  
+  # DocTR (Document Text Recognition)
+  doctr:
+    name: "DocTR"
+    type: "deep_learning"
+    enabled: true
+    priority: 2
+    
+    # Models
+    detection_model: "db_resnet50"
+    recognition_model: "crnn_vgg16_bn"
+    
+    # Detection settings
+    detection:
+      input_size: [1024, 1024]
+      bin_thresh: 0.3
+      box_thresh: 0.1
+      assume_straight_pages: true
+    
+    # Recognition settings
+    recognition:
+      input_size: [32, 128]
+      batch_size: 2
+    
+    # Device
+    device: "auto"  # auto, cpu, cuda
+    
+    # Best for
+    best_for:
+      - "tables"
+      - "complex_layouts"
+      - "multi_language"
+      - "handwritten_text"
+    
+    # Performance
+    speed: "medium"
+    accuracy: "excellent"
+    memory_usage: "high"
+    requires_gpu: true
+  
+  # TrOCR (Transformer-based OCR)
+  trocr:
+    name: "TrOCR"
+    type: "deep_learning"
+    enabled: false
+    priority: 3
+    
+    # Model
+    model: "microsoft/trocr-base-printed"
+    
+    # Settings
+    max_length: 64
+    batch_size: 1
+    device: "auto"
+    
+    # Best for
+    best_for:
+      - "handwriting"
+      - "cursive_text"
+      - "low_quality_images"
+      - "degraded_documents"
+    
+    # Performance
+    speed: "slow"
+    accuracy: "excellent"
+    memory_usage: "very_high"
+    requires_gpu: true
+  
+  # EasyOCR
+  easyocr:
+    name: "EasyOCR"
+    type: "deep_learning"
+    enabled: false
+    priority: 4
+    
+    # Languages
+    languages:
+      - "en"
+      - "hi"
+    
+    # Settings
+    gpu: true
+    batch_size: 1
+    workers: 0
+    
+    # Detection settings
+    text_threshold: 0.7
+    low_text: 0.4
+    link_threshold: 0.4
+    
+    # Best for
+    best_for:
+      - "multi_language"
+      - "mixed_scripts"
+      - "natural_scenes"
+    
+    # Performance
+    speed: "slow"
+    accuracy: "good"
+    memory_usage: "high"
+    requires_gpu: true
+  
+  # Google Cloud Vision API
+  google_vision:
+    name: "Google Cloud Vision"
+    type: "cloud_api"
+    enabled: false
+    priority: 5
+    
+    # API settings
+    api_key: ""  # Set via environment variable
+    endpoint: "https://vision.googleapis.com/v1/images:annotate"
+    
+    # Features
+    features:
+      - "TEXT_DETECTION"
+      - "DOCUMENT_TEXT_DETECTION"
+    
+    # Timeout
+    timeout: 30
+    retry_attempts: 3
+    
+    # Rate limiting
+    requests_per_minute: 1800
+    
+    # Best for
+    best_for:
+      - "high_accuracy"
+      - "mixed_content"
+      - "cloud_processing"
+      - "production_use"
+    
+    # Performance
+    speed: "depends_on_network"
+    accuracy: "excellent"
+    cost: "paid"
+  
+  # AWS Textract
+  aws_textract:
+    name: "AWS Textract"
+    type: "cloud_api"
+    enabled: false
+    priority: 6
+    
+    # AWS settings
+    region: "us-east-1"
+    access_key: ""
+    secret_key: ""
+    
+    # Features
+    features:
+      - "FORMS"
+      - "TABLES"
+    
+    # Timeout
+    timeout: 30
+    
+    # Best for
+    best_for:
+      - "forms"
+      - "tables"
+      - "invoices"
+      - "receipts"
+    
+    # Performance
+    speed: "depends_on_network"
+    accuracy: "excellent"
+    cost: "paid"
+
+# Routing Strategy
+routing:
+  # Strategy: auto, quality_based, confidence_based, hybrid
+  strategy: "auto"
+  
+  # Auto routing rules
+  auto_rules:
+    # High quality images
+    - condition:
+        quality_score: ">= 0.8"
+        has_tables: false
+      engine: "tesseract"
+    
+    # Low quality or handwritten
+    - condition:
+        quality_score: "< 0.5"
+      engine: "trocr"
+    
+    # Tables present
+    - condition:
+        has_tables: true
+      engine: "doctr"
+    
+    # Default
+    - condition:
+        default: true
+      engine: "tesseract"
+  
+  # Fallback chain
+  fallback_chain:
+    - "tesseract"
+    - "doctr"
+    - "google_vision"
+  
+  # Confidence thresholds
+  min_confidence: 0.7
+  retry_on_low_confidence: true
+
+# Ensemble Configuration
+ensemble:
+  enabled: false
+  
+  # Engines to use in ensemble
+  engines:
+    - "tesseract"
+    - "doctr"
+  
+  # Voting strategy: majority, weighted, unanimous
+  voting_strategy: "weighted"
+  
+  # Weights (if using weighted voting)
+  weights:
+    tesseract: 0.4
+    doctr: 0.6
+  
+  # Agreement threshold
+  min_agreement: 0.7
+  
+  # Use ensemble only when
+  conditions:
+    low_confidence: true
+    critical_fields: true
+
+# Post-processing
+post_processing:
+  # Text cleaning
+  clean_text: true
+  remove_noise: true
+  fix_spacing: true
+  
+  # Spell checking
+  spell_check:
+    enabled: false
+    language: "en"
+    custom_dictionary: []
+  
+  # Format correction
+  format_correction:
+    dates: true
+    numbers: true
+    currencies: true
+
+# Performance Optimization
+optimization:
+  # Parallel processing
+  parallel_processing: true
+  max_workers: 4
+  
+  # Batch processing
+  batch_size: 4
+  
+  # Caching
+  cache_results: true
+  cache_ttl_hours: 24
+
+# Quality Metrics
+quality_metrics:
+  # Calculate confidence scores
+  confidence_scores: true
+  
+  # Character-level confidence
+  char_level_confidence: false
+  
+  # Word-level confidence
+  word_level_confidence: true
+
+# Debug Settings
+debug:
+  save_intermediate: false
+  visualize_detections: false
+  log_timing: true
+  compare_engines: false

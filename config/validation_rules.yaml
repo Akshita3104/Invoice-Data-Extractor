@@ -1,0 +1,351 @@
+# Validation Rules Configuration
+# Rules for validating extracted invoice data
+
+# Field Validation Rules
+fields:
+  # Company Name
+  company_name:
+    required: true
+    type: "string"
+    min_length: 2
+    max_length: 200
+    pattern: "^[A-Za-z0-9\\s\\.,&()-]+$"
+    error_message: "Company name must be 2-200 characters with valid characters"
+  
+  # Invoice Number
+  invoice_number:
+    required: true
+    type: "string"
+    min_length: 1
+    max_length: 50
+    pattern: "^[A-Z0-9/-]+$"
+    unique: true
+    error_message: "Invalid invoice number format"
+  
+  # Invoice Date
+  invoice_date:
+    required: true
+    type: "date"
+    format: "%d/%m/%Y"
+    min_date: "01/01/2000"
+    max_date: "today+30"  # Allow future dates up to 30 days
+    error_message: "Date must be in DD/MM/YYYY format"
+  
+  # Customer/Buyer Name
+  customer_name:
+    required: false
+    type: "string"
+    min_length: 2
+    max_length: 200
+    pattern: "^[A-Za-z0-9\\s\\.,&()-]+$"
+  
+  # Item/Goods Description
+  goods_description:
+    required: true
+    type: "string"
+    min_length: 2
+    max_length: 500
+    error_message: "Goods description is required"
+  
+  # Quantity
+  quantity:
+    required: true
+    type: "number"
+    min_value: 0
+    max_value: 1000000
+    decimal_places: 3
+    error_message: "Quantity must be a positive number"
+  
+  # Weight
+  weight:
+    required: false
+    type: "string"
+    pattern: "^[\\d\\.]+\\s*(kg|g|ton|qtl|quintal|MT|KG|G|TON|QTL)?$"
+    convert_to: "kg"
+    error_message: "Invalid weight format"
+  
+  # Rate/Price
+  rate:
+    required: true
+    type: "string"
+    pattern: "^[₹$€£]?\\s*[\\d,]+\\.?\\d*\\s*(per|/)?\\s*(kg|unit|pc|MT|qtl)?$"
+    error_message: "Invalid rate format"
+  
+  # Amount
+  amount:
+    required: true
+    type: "number"
+    min_value: 0
+    max_value: 10000000
+    decimal_places: 2
+    currency: "INR"
+    error_message: "Amount must be a positive number"
+  
+  # HSN/SAC Code
+  hsn_sac_code:
+    required: false
+    type: "string"
+    pattern: "^\\d{4,8}$"
+    min_length: 4
+    max_length: 8
+    error_message: "HSN/SAC code must be 4-8 digits"
+  
+  # GST Number
+  gst_number:
+    required: false
+    type: "string"
+    pattern: "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
+    length: 15
+    error_message: "Invalid GST number format"
+  
+  # FSSAI Number
+  fssai_number:
+    required: false
+    type: "string"
+    pattern: "^\\d{14}$"
+    length: 14
+    error_message: "FSSAI number must be 14 digits"
+  
+  # PAN Number
+  pan_number:
+    required: false
+    type: "string"
+    pattern: "^[A-Z]{5}[0-9]{4}[A-Z]{1}$"
+    length: 10
+    error_message: "Invalid PAN number format"
+  
+  # Email
+  email:
+    required: false
+    type: "email"
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    error_message: "Invalid email format"
+  
+  # Phone Number
+  phone:
+    required: false
+    type: "string"
+    pattern: "^(\\+91|91)?[6-9]\\d{9}$"
+    error_message: "Invalid Indian phone number"
+
+# Arithmetic Validation Rules
+arithmetic:
+  # Item-level validation
+  item_validation:
+    enabled: true
+    formula: "quantity * rate = amount"
+    tolerance: 0.01  # 1% tolerance
+    error_message: "Quantity × Rate ≠ Amount (within tolerance)"
+  
+  # Subtotal validation
+  subtotal_validation:
+    enabled: true
+    formula: "sum(amounts) = subtotal"
+    tolerance: 0.01
+    error_message: "Sum of amounts ≠ Subtotal"
+  
+  # Tax validation
+  tax_validation:
+    enabled: true
+    # Tax can be GST, VAT, etc.
+    rules:
+      - formula: "subtotal * tax_rate = tax_amount"
+        tolerance: 0.01
+        error_message: "Tax calculation incorrect"
+  
+  # Total validation
+  total_validation:
+    enabled: true
+    formula: "subtotal + tax - discount = total"
+    tolerance: 0.01
+    error_message: "Total calculation incorrect"
+  
+  # Discount validation
+  discount_validation:
+    enabled: false
+    max_percentage: 50
+    error_message: "Discount exceeds maximum allowed"
+
+# Cross-field Validation Rules
+cross_field:
+  # Date consistency
+  - name: "date_consistency"
+    condition: "invoice_date <= due_date"
+    error_message: "Invoice date cannot be after due date"
+    severity: "error"
+  
+  # Amount ranges
+  - name: "amount_range"
+    condition: "subtotal <= total"
+    error_message: "Subtotal cannot exceed total"
+    severity: "error"
+  
+  # Tax applicability
+  - name: "tax_applicability"
+    condition: "if gst_number exists then tax_amount > 0"
+    error_message: "GST number present but no tax amount"
+    severity: "warning"
+  
+  # Item count
+  - name: "minimum_items"
+    condition: "len(items) >= 1"
+    error_message: "Invoice must have at least one item"
+    severity: "error"
+
+# Format Validation Rules
+format:
+  # Date formats to try
+  date_formats:
+    - "%d/%m/%Y"
+    - "%d-%m-%Y"
+    - "%Y/%m/%d"
+    - "%Y-%m-%d"
+    - "%d %B %Y"
+    - "%B %d, %Y"
+  
+  # Number formats
+  number_formats:
+    decimal_separator: "."
+    thousand_separator: ","
+    allow_negative: false
+  
+  # Currency formats
+  currency_formats:
+    symbols: ["₹", "Rs", "Rs.", "INR", "$", "USD"]
+    position: "prefix"  # prefix or suffix
+
+# Consistency Validation Rules
+consistency:
+  # Check company name consistency
+  - name: "company_name_consistency"
+    field: "company_name"
+    check: "appears_multiple_times"
+    tolerance: 0.8  # 80% similarity
+    error_message: "Company name appears differently in document"
+  
+  # Check invoice number uniqueness
+  - name: "invoice_number_unique"
+    field: "invoice_number"
+    check: "unique_in_batch"
+    error_message: "Duplicate invoice number in batch"
+  
+  # Check date sequence
+  - name: "date_sequence"
+    field: "invoice_date"
+    check: "chronological_order"
+    error_message: "Invoice dates not in sequence"
+
+# Plausibility Validation (LLM-based)
+plausibility:
+  enabled: false
+  
+  # Checks to perform
+  checks:
+    - name: "reasonable_prices"
+      description: "Check if prices are reasonable for the goods"
+      severity: "warning"
+    
+    - name: "realistic_quantities"
+      description: "Check if quantities make sense"
+      severity: "warning"
+    
+    - name: "business_logic"
+      description: "Check general business logic"
+      severity: "info"
+  
+  # LLM settings
+  llm:
+    model: "gemini-1.5-flash"
+    temperature: 0.1
+    timeout: 10
+
+# Auto-correction Rules
+auto_correction:
+  enabled: true
+  max_corrections: 5
+  
+  corrections:
+    # Date format correction
+    - field: "invoice_date"
+      action: "standardize_date"
+      target_format: "%d/%m/%Y"
+    
+    # Number format correction
+    - field: "amount"
+      action: "remove_commas"
+      pattern: ","
+    
+    # Weight unit correction
+    - field: "weight"
+      action: "convert_units"
+      target_unit: "kg"
+    
+    # Text cleanup
+    - field: "company_name"
+      action: "trim_whitespace"
+    
+    # Case correction
+    - field: "gst_number"
+      action: "to_uppercase"
+    
+    # Remove currency symbols for numeric fields
+    - field: "amount"
+      action: "remove_currency_symbols"
+      symbols: ["₹", "Rs", "Rs.", "$"]
+
+# Confidence Scoring
+confidence:
+  # Minimum confidence thresholds
+  thresholds:
+    critical_fields: 0.9  # invoice_number, date, total
+    important_fields: 0.8  # company_name, amounts
+    optional_fields: 0.7  # other fields
+  
+  # Critical fields
+  critical_fields:
+    - "invoice_number"
+    - "invoice_date"
+    - "total"
+    - "company_name"
+  
+  # Fields that affect confidence
+  confidence_factors:
+    - "ocr_confidence"
+    - "format_match"
+    - "arithmetic_check"
+    - "pattern_match"
+
+# Error Handling
+error_handling:
+  # What to do on validation failure
+  on_error:
+    critical: "reject"  # reject, flag, manual_review
+    error: "flag"
+    warning: "accept"
+    info: "accept"
+  
+  # Collect all errors or stop at first
+  collect_all_errors: true
+  
+  # Generate validation report
+  generate_report: true
+  
+  # Include suggestions
+  include_suggestions: true
+
+# Validation Report Settings
+report:
+  # Include in report
+  include:
+    - "field_errors"
+    - "arithmetic_errors"
+    - "consistency_warnings"
+    - "confidence_scores"
+    - "suggestions"
+  
+  # Report format
+  format: "json"  # json, yaml, html
+  
+  # Save report
+  save_report: true
+  report_dir: "validation_reports"

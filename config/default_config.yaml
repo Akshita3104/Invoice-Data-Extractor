@@ -1,0 +1,374 @@
+# Default Configuration for Invoice Data Extractor
+# This file contains all default settings for the application
+
+# Application Information
+app:
+  name: "Invoice Data Extractor"
+  version: "2.0.0"
+  description: "Advanced invoice data extraction with ML/AI"
+  debug: false
+  log_level: "INFO"
+
+# API Configuration
+api:
+  # Google Gemini API
+  gemini:
+    enabled: true
+    model: "gemini-1.5-flash"
+    api_key: ""  # Set via environment variable or UI
+    temperature: 0.1
+    max_tokens: 4096
+    timeout: 30
+    retry_attempts: 3
+    retry_delay: 1
+  
+  # Google Vision API (Optional)
+  google_vision:
+    enabled: false
+    api_key: ""
+    timeout: 30
+  
+  # AWS Textract (Optional)
+  aws_textract:
+    enabled: false
+    region: "us-east-1"
+    access_key: ""
+    secret_key: ""
+    timeout: 30
+
+# Input/Ingestion Configuration
+ingestion:
+  enabled: true
+  supported_formats:
+    - ".pdf"
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".tiff"
+    - ".tif"
+  
+  max_file_size_mb: 50
+  max_files_per_batch: 100
+  
+  # Quality assessment thresholds
+  quality:
+    min_dpi: 150
+    target_dpi: 300
+    min_quality_score: 0.5
+    auto_reject_poor: false
+
+# OCR Configuration
+ocr:
+  # Primary OCR engine
+  default_engine: "tesseract"  # tesseract, doctr, trocr, google_vision, aws_textract
+  
+  # Fallback settings
+  fallback_enabled: true
+  fallback_order:
+    - "tesseract"
+    - "doctr"
+    - "google_vision"
+  
+  # Ensemble settings
+  ensemble_enabled: false
+  ensemble_engines:
+    - "tesseract"
+    - "doctr"
+  
+  # Tesseract settings
+  tesseract:
+    lang: "eng"
+    config: "--oem 3 --psm 6"
+    dpi: 300
+    timeout: 30
+  
+  # DocTR settings
+  doctr:
+    detection_model: "db_resnet50"
+    recognition_model: "crnn_vgg16_bn"
+    pretrained: true
+  
+  # Confidence thresholds
+  confidence_threshold: 0.7
+  min_text_length: 3
+
+# Preprocessing Configuration
+preprocessing:
+  enabled: true
+  
+  # Operations to perform
+  operations:
+    denoise: true
+    enhance_contrast: true
+    auto_rotate: true
+    deskew: true
+    normalize_resolution: true
+    binarize: false
+  
+  # Resolution settings
+  target_dpi: 300
+  maintain_aspect_ratio: true
+  
+  # Enhancement parameters
+  contrast:
+    method: "clahe"  # clahe, histogram_eq, adaptive
+    clip_limit: 2.0
+    tile_grid_size: [8, 8]
+  
+  denoise:
+    method: "gaussian"  # gaussian, bilateral, nlmeans
+    kernel_size: 3
+
+# Layout Analysis Configuration
+layout_analysis:
+  enabled: true
+  
+  # Zone segmentation
+  zone_segmentation:
+    enabled: true
+    detect_header: true
+    detect_footer: true
+    detect_body: true
+    detect_tables: true
+  
+  # Table detection
+  table_detection:
+    enabled: true
+    use_ml: true
+    model: "tablenet"
+    confidence_threshold: 0.5
+  
+  # Reading order detection
+  reading_order:
+    enabled: true
+    direction: "auto"  # auto, ltr, rtl, ttb
+
+# Graph-based Processing (Experimental)
+graph:
+  enabled: false
+  
+  spatial_relations:
+    enabled: true
+    max_distance: 100
+  
+  semantic_relations:
+    enabled: true
+  
+  gnn_reasoning:
+    enabled: false
+    model: "gcn"
+
+# Multimodal Processing
+multimodal:
+  enabled: false
+  
+  feature_extraction:
+    visual: true
+    textual: true
+    layout: true
+  
+  fusion:
+    method: "attention"  # attention, concatenation, weighted
+  
+  field_detection:
+    enabled: false
+    model: "yolov5"
+
+# Extraction Configuration
+extraction:
+  # Primary extraction method
+  method: "gemini"  # gemini, rule_based, hybrid
+  
+  # Gemini extraction
+  gemini:
+    use_vision: false
+    prompt_template: "default"
+  
+  # Rule-based fallback
+  rule_based:
+    enabled: true
+    patterns_file: "config/extraction_patterns.yaml"
+  
+  # Hybrid mode
+  hybrid:
+    use_ml_confidence: true
+    fallback_to_rules: true
+    confidence_threshold: 0.8
+  
+  # Fields to extract
+  fields:
+    - "company_name"
+    - "invoice_number"
+    - "invoice_date"
+    - "customer_name"
+    - "items"
+    - "quantities"
+    - "rates"
+    - "amounts"
+    - "subtotal"
+    - "tax"
+    - "total"
+    - "fssai_number"
+    - "gst_number"
+
+# Validation Configuration
+validation:
+  enabled: true
+  
+  # Validation checks
+  checks:
+    arithmetic: true      # Quantity × Rate = Amount
+    format: true          # Date, number formats
+    consistency: true     # Cross-field checks
+    plausibility: false   # LLM-based validation
+  
+  # Thresholds
+  min_confidence: 0.8
+  
+  # Arithmetic validation
+  arithmetic:
+    tolerance: 0.01  # 1% tolerance
+    check_subtotal: true
+    check_tax: true
+    check_total: true
+  
+  # Format validation
+  format:
+    date_format: "%d/%m/%Y"
+    strict_format: false
+  
+  # Auto-correction
+  auto_correct:
+    enabled: true
+    max_corrections: 5
+
+# Export Configuration
+export:
+  # Output formats
+  formats:
+    - "excel"
+    - "json"
+  
+  # Excel settings
+  excel:
+    engine: "openpyxl"
+    include_confidence: false
+    include_metadata: true
+    sheet_name: "Invoice Data"
+  
+  # JSON settings
+  json:
+    indent: 4
+    ensure_ascii: false
+    sort_keys: false
+  
+  # CSV settings (if enabled)
+  csv:
+    delimiter: ","
+    encoding: "utf-8"
+  
+  # Output structure
+  output:
+    combine_files: true
+    separate_by_invoice: false
+    include_timestamp: true
+
+# Performance Configuration
+performance:
+  # GPU settings
+  use_gpu: true
+  gpu_memory_fraction: 0.9
+  
+  # Batch processing
+  batch_size: 4
+  num_workers: 4
+  
+  # Caching
+  cache_enabled: true
+  cache_size_mb: 500
+  cache_ttl_hours: 24
+  
+  # Optimization
+  use_mixed_precision: true
+  compile_models: false
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_dir: "logs"
+  
+  # File logging
+  file:
+    enabled: true
+    max_size_mb: 10
+    backup_count: 5
+    format: "detailed"
+  
+  # Console logging
+  console:
+    enabled: true
+    colored: true
+    format: "simple"
+  
+  # Error logging
+  errors:
+    separate_file: true
+    include_traceback: true
+
+# Storage Configuration
+storage:
+  # Temporary files
+  temp_dir: "temp"
+  cleanup_temp: true
+  
+  # Output directory
+  output_dir: "output"
+  
+  # Model weights
+  models_dir: "backend/models/weights"
+  
+  # Cache directory
+  cache_dir: ".cache"
+
+# Security Configuration
+security:
+  # API key handling
+  api_keys:
+    validate: true
+    encrypt: false
+  
+  # File validation
+  file_validation:
+    check_file_type: true
+    scan_malware: false
+    max_file_size_mb: 50
+
+# UI Configuration (Electron)
+ui:
+  # Window settings
+  window:
+    width: 900
+    height: 700
+    resizable: true
+    frame: true
+  
+  # Theme
+  theme: "light"  # light, dark, auto
+  
+  # Language
+  language: "en"  # en, hi, etc.
+
+# Development Settings
+development:
+  debug_mode: false
+  save_intermediate: false
+  benchmark_performance: false
+  profile_memory: false
+
+# Feature Flags
+features:
+  experimental_graph: false
+  experimental_multimodal: false
+  cloud_ocr: false
+  batch_processing: true
+  real_time_preview: false
