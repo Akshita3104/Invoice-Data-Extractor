@@ -839,4 +839,4 @@ Special thanks to all contributors and the open-source community!
 
 **Built with ❤️ for accurate invoice extraction**
 
-Made with ☕ and 🧠 by [Cherry28831](https://github.com/Cherry28831)
+Made with ☕ and 🧠 by Akshita Shetty!
